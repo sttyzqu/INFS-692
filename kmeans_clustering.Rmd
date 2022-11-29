@@ -1,0 +1,154 @@
+---
+title: "STAT325 Statistical Computing"
+author: "Sitty Azquia Camama"
+date: "2022-12-02"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## K-Means Clustering
+
+K-Means Clustering is one of the most well-known and commonly used clustering algorithms for partitioning observations into a set of k groups. In this document, we will perform K-Means Clustering using **iris data sets.** 
+
+### 1. Load Helper Packages
+
+```{r}
+library(dplyr)       # for data manipulation
+library(ggplot2)     # for data visualization
+library(stringr)     # for string functionality
+library(gridExtra)   # for manipulating the grid
+```
+
+### 2. Load Modeling Packages
+
+```{r}
+library(tidyverse)  # data manipulation
+library(cluster)     # for general clustering algorithms
+library(factoextra)  # for visualizing cluster results
+```
+
+### 3. Load Data Sets
+
+The data contains 150 observations and 5 variables. The data in variable Sepal length and width and Petal length and width are measured in centimeter. Variable Species categorized in Iris setosa, versicolor and virginica. Iris data set is already build into Rstudio.
+
+```{r}
+data("iris")
+```
+
+To remove any missing value that might be present in the data, type this:
+
+```{r}
+df <- na.omit(iris)
+```
+
+### 3. Standardizing the Data
+
+We will use variables **1:4** only to standardize the numerical data.
+
+```{r}
+df <- scale(df[c(1:4)])
+head(df)
+```
+
+### 4. Apply K-Means Clustering Algorithm
+
+We will start at 2 clusters:
+
+```{r}
+k2 <- kmeans(df, centers = 2, nstart = 25)
+str(k2)
+```
+
+Plot the 2 clusters:
+
+```{r}
+fviz_cluster(k2, data = df)
+```
+
+Get the each cluster's data:
+
+```{r}
+df %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         Species = row.names(iris)) %>%
+  ggplot(aes(Sepal.Length, Sepal.Width, color = factor(cluster), label = Species)) +
+  geom_text()
+```
+
+We will try at 3, 4, and 5 clusters :
+
+```{r}
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k4 <- kmeans(df, centers = 4, nstart = 25)
+k5 <- kmeans(df, centers = 5, nstart = 25)
+```
+
+Plot to compare:
+
+```{r}
+p1 <- fviz_cluster(k2, geom = "point", data = df) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df) + ggtitle("k = 5")
+
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
+
+### 5. Compute Elbow Method
+
+Compute Elbow Method by determining optimal number of clusters
+
+```{r}
+set.seed(123)
+
+#function to compute total within-cluster sum of square 
+wss <- function(k) {
+  kmeans(df, k, nstart = 10 )$tot.withinss
+}
+
+# Compute and plot wss for k = 1 to k = 15
+k.values <- 1:15
+
+# extract wss for 2-15 clusters
+wss_values <- map_dbl(k.values, wss)
+
+plot(k.values, wss_values,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+
+```
+
+or with **Average Silhouette Method** measures the quality of a clustering.
+
+```{r}
+fviz_nbclust(df, kmeans, method = "silhouette")
+
+# compute gap statistic
+set.seed(123)
+gap_stat <- clusGap(df, FUN = kmeans, nstart = 25,
+                    K.max = 10, B = 50)
+# Print the result
+print(gap_stat, method = "firstmax")
+
+fviz_gap_stat(gap_stat)
+
+```
+
+### 6. Visualize
+
+```{r}
+# Compute k-means clustering with k = 2
+set.seed(123)
+final <- kmeans(df, 2, nstart = 25)
+print(final)
+
+#final data
+fviz_cluster(final, data = df)
+```
